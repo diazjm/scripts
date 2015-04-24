@@ -30,18 +30,24 @@ public class PlatformerPlayerController : MonoBehaviour {
 	
 	public float jumpTime = 10;
 	
+	//physics values
+	//gravity values
 	public float currentGravity = .01f;
 	public float gravityAcceleration = 1.1f;
 	public float maxGravity = .03f;
-
+	//horizontal physics -calculates player movment inputs
 	public float horizontalVelocity = .005f;
 	public float horizontalAcceleration = 1.05f;
+	public float horizontalDecay = 0.7f; 
 	public float maxVelocity = .1f;
 	
+	//TODO see if this will work for the jump values
+	//vertical physics = needed for jumps?
+	public float verticalVelocity = .01f;
+	
+	//final movement amounts per update
 	private float horizontalMovement;
 	private float verticalMovement;
-	
-	public float collisionRayCastSize;
 	
 	public bool debug = false;
 	
@@ -53,7 +59,6 @@ public class PlatformerPlayerController : MonoBehaviour {
 	
 	void Start () {
 		gravityAcceleration = DEFAULT_GRAVITY_ACCELERATION;
-		collisionRayCastSize = DEFAULT_COLLISION_RAYCAST_SIZE;
 		this.SetObject2DBoxColliderCorners();
 	}
 	
@@ -85,36 +90,38 @@ public class PlatformerPlayerController : MonoBehaviour {
 			currentGravity = currentGravity * gravityAcceleration;
 			if(currentGravity > maxGravity) currentGravity = maxGravity;
 		}
-		verticalMovement = verticalMovement - currentGravity;
-
-		if(running){
-			if(horizontalVelocity < maxVelocity){
-				horizontalVelocity = horizontalVelocity * horizontalAcceleration;
-				if(horizontalVelocity > maxVelocity) horizontalVelocity = maxVelocity;
+		
+		//slow down if no horizontal input is going in
+		if(Mathf.Abs(Input.GetAxisRaw("Horizontal")) == 0){
+			if(horizontalVelocity > .01f){
+				horizontalVelocity = horizontalVelocity * horizontalDecay;
+				if(horizontalVelocity < .01f) horizontalVelocity = .01f;
 			}
-			horizontalMovement = movementSpeed * 2.5f * Input.GetAxisRaw("Horizontal");
 		}
-		else{ //Walking
-			if(Mathf.Abs(Input.GetAxisRaw("Horizontal")) <= 0){
-				if(horizontalVelocity > .01f){
-					horizontalVelocity = horizontalVelocity - .01f;
-					if(horizontalVelocity < .01f) horizontalVelocity = .01f;
-				}
-			}
-			else{
+		//speed up with any horizontal input
+		else{
+			if(running){
 				if(horizontalVelocity < maxVelocity){
 					horizontalVelocity = horizontalVelocity * horizontalAcceleration;
 					if(horizontalVelocity > maxVelocity) horizontalVelocity = maxVelocity;
 				}
 			}
-
-			horizontalMovement = horizontalVelocity * Input.GetAxisRaw("Horizontal");
+			else{ //Walking
+				if(horizontalVelocity < maxVelocity){
+					horizontalVelocity = horizontalVelocity * horizontalAcceleration;
+					if(horizontalVelocity > maxVelocity) horizontalVelocity = maxVelocity;
+				}
+			}
 		}
 		
+		//TODO fix the jumping, rather than have a jump time, apply a set amount of verticle velocity that slow decreases
 		if(jumping){
 			Debug.Log("jumping");
 			grounded = false;
-			while(jumpTime > 0){
+			
+			verticalVelocity = verticalVelocity + 5f
+			
+			/* while(jumpTime > 0){
 				verticalMovement = verticalMovement + .15f;
 				jumpTime = jumpTime - 1;
 			}
@@ -122,8 +129,12 @@ public class PlatformerPlayerController : MonoBehaviour {
 				//reset variables
 				jumpTime = DEFAULT_JUMP_TIME;
 				jumping = false;
-			}
+			} */
 		}
+		
+		//calculate the final movement values here
+		verticalMovement = verticalVelocity - currentGravity;
+		horizontalMovement = horizontalVelocity * Input.GetAxisRaw("Horizontal");
 		
 		//THEN USE THE RAY CASTS TO CHECK IF THE MOVEMENT IS POSSIBLE
 		RaycastHit2D bottomRaycastHit;
@@ -150,9 +161,7 @@ public class PlatformerPlayerController : MonoBehaviour {
 		
 		RaycastHit2D bottomLeftAngleRaycast = Physics2D.Raycast(bottomLeft.transform.position,Vector3.down,DEFAULT_COLLISION_RAYCAST_SIZE+.001f);
 		RaycastHit2D bottomRightAngleRaycast = Physics2D.Raycast(bottomRight.transform.position,Vector3.down,DEFAULT_COLLISION_RAYCAST_SIZE+.001f);
-		
-		//transform.rotation = Quaternion.FromToRotation(transform.up, bottomLeftAngleRaycast.normal);
-		
+	
 		if(debug){
 			Debug.DrawRay(bottomLeft.transform.position,Vector3.down,Color.red);
 			Debug.DrawRay(bottomRight.transform.position,Vector3.down,Color.red);
